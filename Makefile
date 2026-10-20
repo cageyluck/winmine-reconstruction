@@ -1,43 +1,58 @@
-# Build the reconstruction from your own copy of winmine.exe.
-#
-#   make EXE=path/to/winmine.exe
-#
-# Variables (override on the command line):
-#   EXE     your winmine.exe (Windows Minesweeper, 32-bit Unicode build)
-#   ZIG     Zig executable, used as the C compiler and resource compiler (default: zig)
-#   PYTHON  Python 3 interpreter with pefile (and capstone for `make disasm`)
+# winmine-reconstruction
 
-EXE    ?= winmine.exe
-ZIG    ?= zig
-PYTHON ?= python3
+A hand-made C reconstruction of `winmine.exe` (Windows Minesweeper, 32-bit, Unicode build),
+produced by reading a full disassembly of the binary. It is intended for analysis and learning.
 
-BUILD  := build
-RES    := $(BUILD)/res
-TARGET := $(BUILD)/winmine_rebuilt.exe
-SRC    := src/winmine_reconstructed.c
+> **Status:** the code compiles and links, but it has not been run or compared against the
+> original. Behavior may differ, especially in the window drawing and sizing code
+> (`DrawBorder`, `AdjustWindow`) and in the mouse tracking code (`FLocalButton`, `TrackMouse`).
 
-CFLAGS  := -target x86-windows-gnu -O1 -Wall
-LDFLAGS := -Wl,--subsystem,windows
-LIBS    := -lcomctl32 -lshell32 -lwinmm -ladvapi32 -luser32 -lgdi32
+## Contents
 
-.PHONY: all resources disasm clean
+| File | Description |
+| --- | --- |
+| `src/winmine_reconstructed.c` | Reconstructed source: game logic, drawing, settings (registry and legacy INI), sound, help, dialogs |
+| `analysis/winmine_disassembly.asm` | Recursive-descent disassembly of the code section, with import names |
+| `tools/extract_resources.py` | Extracts resources from your own `winmine.exe` and generates `winmine.rc` |
+| `Makefile` | Extracts resources, compiles and links the project |
+| `tools/wm_disasm.py` | Script that produced the disassembly (needs `pefile` and `capstone`; usage: `python tools/wm_disasm.py winmine.exe out.asm`) |
 
-all: $(TARGET)
+## Notes on the reconstruction
 
-resources: $(RES)/winmine.rc
+- There are no symbols in the binary, so all function and variable names are guesses.
+- The CRT startup code at the entry point is not reconstructed; the build uses the toolchain's own startup.
+- Board cells are one byte: bit 7 = mine, bit 6 = revealed, bits 0-4 = display index.
 
-$(RES)/winmine.rc: $(EXE) tools/extract_resources.py
-	$(PYTHON) tools/extract_resources.py "$(EXE)" $(RES)
+## Building
 
-$(RES)/winmine.res: $(RES)/winmine.rc
-	cd $(RES) && $(ZIG) rc winmine.rc winmine.res
+The repository contains no Microsoft resources. You supply your own `winmine.exe`
+(Windows Minesweeper, 32-bit Unicode build); the build extracts the menu, dialogs, bitmaps,
+sounds and icon from it and generates `winmine.rc`.
 
-$(TARGET): $(SRC) $(RES)/winmine.res
-	$(ZIG) cc $(CFLAGS) $(LDFLAGS) $(SRC) $(RES)/winmine.res -o $@ $(LIBS)
+Requirements: [Zig](https://ziglang.org/) (used as C compiler and resource compiler),
+Python 3 with `pefile`, and `make`.
 
-disasm: $(EXE)
-	mkdir -p $(BUILD)
-	$(PYTHON) tools/wm_disasm.py "$(EXE)" $(BUILD)/winmine_disassembly.asm
+```
+pip install pefile
+make EXE=path/to/winmine.exe
+```
 
-clean:
-	rm -rf $(BUILD)
+The result is `build/winmine_rebuilt.exe`. Individual steps:
+
+| Command | Effect |
+| --- | --- |
+| `make resources EXE=...` | only extract the resources and write `build/res/winmine.rc` |
+| `make disasm EXE=...` | write a disassembly to `build/winmine_disassembly.asm` (needs `capstone`) |
+| `make clean` | remove `build/` |
+
+If Zig is not on your PATH, pass it explicitly, e.g. `make ZIG="python3 -m ziglang" EXE=...`.
+Without `make`, run `python tools/extract_resources.py winmine.exe build/res`, compile the `.rc`
+with `zig rc`, and link as shown in the `Makefile`.
+
+## Legal
+
+Only `tools/wm_disasm.py`, `tools/extract_resources.py`, the `Makefile` and this README are under the MIT License (see `LICENSE`). The reconstructed
+source and the disassembly are derived from Microsoft's program and are not licensed by the author.
+
+Windows Minesweeper is a Microsoft product. This repository contains no Microsoft binaries
+or assets. It is not affiliated with or endorsed by Microsoft.
