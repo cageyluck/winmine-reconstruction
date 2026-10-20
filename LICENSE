@@ -1,10 +1,10 @@
 MIT License
 
-Copyright (c) 2026 [EMRE ERYURT]
+Copyright (c) 2026 [Emre Eryurt]
 
 Scope: this license applies only to the original work in this repository, namely
-wm_disasm.py and README.md. It does not apply to winmine_reconstructed.c or
-winmine_disassembly.asm, which are derived from Microsoft's winmine.exe.
+tools/wm_disasm.py and README.md. It does not apply to src/winmine_reconstructed.c or
+analysis/winmine_disassembly.asm, which are derived from Microsoft's winmine.exe.
 Microsoft retains all rights in that program; no license to it is granted here.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
